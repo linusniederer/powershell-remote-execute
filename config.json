@@ -1,0 +1,40 @@
+{   
+    "application": {
+        "writeLog": false,
+        "debug": true
+    },
+
+    "credentials": {
+        "username":"",
+        "domain":"",
+        "password": ""
+    },
+
+    "servers": [
+        {
+            "name":"",
+            "fqdn":"",
+            "ip":""
+        },
+        {
+            "name":"",
+            "fqdn":"",
+            "ip":""
+        }
+    ],
+
+    "instructions": [
+        {
+            "type": "command",
+            "command": "",
+            "path": "",
+            "params": ""
+        },
+        {
+            "type": "application",
+            "command": "",
+            "path": "",
+            "params": ""
+        }
+    ]
+}
