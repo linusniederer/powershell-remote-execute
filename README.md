@@ -24,8 +24,17 @@
 ```json
 {
     "type": "command",
+    "command": "[PowerShell command to execute]",
+    "path": "[Path if command requires path]",
+    "params": "[Params if command requires params]"
+}
+```
+
+```json
+{
+    "type": "command",
     "command": "New-Item",
-    "path": "C:\\Temp\\test456.txt",
-    "params": "-ItemType File -Force"
+    "path": "C:\\Users\\Public\\Desktop\\File.txt",
+    "params": "-FileType File -Force"
 }
 ```
