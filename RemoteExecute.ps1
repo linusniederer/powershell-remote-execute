@@ -8,25 +8,26 @@
 #
 
 Param( $action )
-if( $action -ne $null ) { $action = $action.ToLower() }
-
+if( $null -ne $action ) { $action = $action.ToLower() }
 
 Class RemoteExecute {
 
     # Application config
     [System.Object] $config
     [bool] $writeLog
-    
-    # Server Array
+    [bool] $debug
+
+    [PSCredential] $cred = $null
+
+    # Server and command piplines 
     [array] $servers = @()
+    [array] $instructions = @()
     
     <#
      # Constructor
      #>
     RemoteExecute() {
-
         $this.parseConfig()
-        
     }
 
     <#
@@ -37,20 +38,79 @@ Class RemoteExecute {
         # read configuration
         $this.config = Get-Content './config.json' | ConvertFrom-Json
         
-        if($this.config -ne $null) {
+        if($null -ne $this.config) {
             # read application configuration
-            $this.writeLog = $this.config.application.writeLog;
+            $this.writeLog  = $this.config.application.writeLog;
+            $this.debug     = $this.config.application.debug;
+
+            # get credentials
+            $username = "$($this.config.credentials.domain)\$($this.config.credentials.username)"
+            $password = $this.config.credentials.password
+            $secureString = ConvertTo-SecureString $password -AsPlainText -Force
+
+            $this.cred = New-Object System.Management.Automation.PSCredential -ArgumentList ($username, $secureString)
 
             # read server configuration
             foreach($server in $this.config.servers) {
                 $state = $this.isAlive($server.fqdn, $server.ip)            
                 $this.addServer( $server.name, $server.fqdn, $server.ip, $state )
             }
+
+            # read command configuraton
+            foreach($instruction in $this.config.instructions) {
+                $this.addInstruction( $instruction.type, $instruction.command, $instruction.path, $instruction.params)
+            }
         
         } else {
             $this.log("ERROR: Can't read configuration file! File must have name [config.json] and has to be stored in root!")
         }
         
+    }
+
+    [void] executeCommands() {
+
+        # Loop through servers and execute all instrutions
+        foreach($server in $this.servers) {
+
+            if($server.Status -eq "online") {
+
+                # create new server session
+                $session = New-PSSession -ComputerName $server.FQDN -Credential $this.cred
+                $this.log("Create new Session for Server [$($server.Name)]")
+
+                foreach($instruction in $this.instructions) {
+
+                    $this.log("Send instruction to Server [$($server.Name)]
+                        type:       [$($instruction.Type)]
+                        command:    [$($instruction.Command)]
+                        path:       [$($instruction.Path)]
+                        params:     [$($instruction.Params)] ")
+
+                    $parameters = @{
+                        Session = $session
+                        ArgumentList = $instruction.Type, $instruction.Command, $instruction.Path, $instruction.Params
+                        ScriptBlock = {
+                            param($type, $command, $path, $params) 
+
+                            if($type -eq "command") {
+                                $expression = "$command $path $params"
+                            }
+
+                            if($type -eq "application") {
+                                $application = "$path '$params'"
+                                $expression = "Start-Process $path $params"
+                            }
+                            
+                            return Invoke-Expression $expression
+                        } 
+                    }
+
+                    $result = Invoke-Command @parameters
+                }
+            }
+        }
+
+        $this.log("All instructions were sent to all servers!")
     }
 
     <#
@@ -73,6 +133,24 @@ Class RemoteExecute {
     }
 
     <#
+     # Method to add new server object
+     #
+     # @param Full Qualified Domain Name
+     # @param IP Address
+     #>
+     hidden [void] addInstruction($type, $command, $params, $path) {
+
+        $instruction = New-Object -TypeName psobject
+
+        $instruction | Add-Member -MemberType NoteProperty -Name Type -Value $type
+        $instruction | Add-Member -MemberType NoteProperty -Name Command -Value $command
+        $instruction | Add-Member -MemberType NoteProperty -Name Params -Value $params
+        $instruction | Add-Member -MemberType NoteProperty -Name Path -Value $path
+        
+        $this.instructions += $instruction
+    }
+
+    <#
      # Method to get connectivity of server
      #
      # @param Full Qualified Domain Name
@@ -80,17 +158,18 @@ Class RemoteExecute {
      #>
     hidden [string] isAlive($fqdn, $ipaddress) {
 
-        if( $fqdn -ne $null -AND (Test-Connection -ComputerName $fqdn -Quiet -Count 1 )) {
+        if( $null -ne $fqdn -AND (Test-Connection -ComputerName $fqdn -Quiet -Count 1 )) {
             $this.log("SUCCESS: Server [$fqdn] is online, commands will be sent over FQDN!")
             return "online"
         } 
 
-        if( $ipaddress -ne $null -AND (Test-Connection -ComputerName $ipaddress -Quiet -Count 1 )) {
+        if( $null -ne $ipaddress -AND (Test-Connection -ComputerName $ipaddress -Quiet -Count 1 )) {
             $this.log("SUCCESS: Server [$ipaddress] is online, commands will be sent over ipv4!")
+            $this.log("WARNONG: Server [$ipaddress] is not reachable over FQDN, this will cause an error while sending instructions!")
             return "online"
         }
 
-        $this.log("WARNING: Server [$fqdn] is offline, no commands will be executed!")
+        $this.log("ERROR: Server [$fqdn] is offline, no commands will be executed!")
         return "offline"
     }
 
@@ -101,12 +180,14 @@ Class RemoteExecute {
      #>
      [void] log($message) {
         $timestamp = Get-Date -Format "dd.MM.yyyy HH:mm:ss"
-        
-        # define color filter
-        if($message -like '*error*') { Write-Host -ForegroundColor 'Red' "$timestamp #> $message" }
-        elseIf($message -like '*success*') { Write-Host -ForegroundColor 'Green' "$timestamp #> $message" }
-        elseIf($message -like '*warning*') { Write-Host -ForegroundColor 'Yellow' "$timestamp #> $message" }
-        else { Write-Host "$timestamp #> $message" }
+
+        if($this.debug) {    
+            # define color filter
+            if($message -like '*error*') { Write-Host -ForegroundColor 'Red' "$timestamp #> $message" }
+            elseIf($message -like '*success*') { Write-Host -ForegroundColor 'Green' "$timestamp #> $message" }
+            elseIf($message -like '*warning*') { Write-Host -ForegroundColor 'Yellow' "$timestamp #> $message" }
+            else { Write-Host "$timestamp #> $message" }
+        }
 
         # write log if defined
         if($this.writeLog) {
@@ -124,7 +205,14 @@ Class RemoteExecute {
 $application = [RemoteExecute]::new()
 
 switch($action) {
-    'INFO'     { Write-Host $application.servers }
-}
+    'INFO' { 
+        Write-Host "Found the following servers in the configuration:"
+        $application.servers | Format-Table
 
-$application.servers
+        Write-Host "Found the following instructions in the configuration:"
+        $application.instructions | Format-Table
+     }
+     'RUN' {
+        $application.executeCommands()
+     }
+}
