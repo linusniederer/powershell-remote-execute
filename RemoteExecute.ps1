@@ -136,14 +136,14 @@ Class RemoteExecute {
      # @param Full Qualified Domain Name
      # @param IP Address
      #>
-     hidden [void] addInstruction($type, $command, $params, $path) {
+     hidden [void] addInstruction($type, $command, $path, $params) {
 
         $instruction = New-Object -TypeName psobject
 
         $instruction | Add-Member -MemberType NoteProperty -Name Type -Value $type
         $instruction | Add-Member -MemberType NoteProperty -Name Command -Value $command
-        $instruction | Add-Member -MemberType NoteProperty -Name Params -Value $params
         $instruction | Add-Member -MemberType NoteProperty -Name Path -Value $path
+        $instruction | Add-Member -MemberType NoteProperty -Name Params -Value $params
         
         $this.instructions += $instruction
     }
@@ -201,6 +201,8 @@ Class RemoteExecute {
 
 # Call to static property
 $application = [RemoteExecute]::new()
+
+$application.executeCommands()
 
 switch($action) {
     'INFO' { 
