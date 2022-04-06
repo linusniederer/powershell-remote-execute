@@ -202,8 +202,6 @@ Class RemoteExecute {
 # Call to static property
 $application = [RemoteExecute]::new()
 
-$application.executeCommands()
-
 switch($action) {
     'INFO' { 
         Write-Host "Found the following servers in the configuration:"
