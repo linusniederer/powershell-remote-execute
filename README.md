@@ -1,25 +1,7 @@
 # powershell-remote-execute
 
 
-
-
-
-
-
-
 ## Instruction Types
-
-### Application
-```json
-{
-    "type": "application",
-    "command": "",
-    "path": "C:\\Temp\\test.exe",
-    "params": ""
-}
-```
-
-
 ### Command
 ```json
 {
@@ -30,6 +12,7 @@
 }
 ```
 
+### Application
 ```json
 {
     "type": "application",
