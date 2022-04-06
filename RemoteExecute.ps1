@@ -96,7 +96,7 @@ Class RemoteExecute {
 
                             if($type -eq "application") {
                                 $application = "$path '$params'"
-                                $expression = "Start-Process $path $params"
+                                $expression = "Start-Process $path -ArgumentList '$params'"
                             }
                             
                             return Invoke-Expression $expression
