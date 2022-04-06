@@ -32,9 +32,9 @@
 
 ```json
 {
-    "type": "command",
-    "command": "New-Item",
-    "path": "C:\\Users\\Public\\Desktop\\File.txt",
-    "params": "-FileType File -Force"
+    "type": "application",
+    "command": "",
+    "path": "[Path to executable]",
+    "params": "[Params for executable]"
 }
 ```
