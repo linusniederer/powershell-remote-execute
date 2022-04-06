@@ -1,5 +1,4 @@
-# powershell-remote-execute
-
+# PowerShell Remote Execution
 
 ## Instruction Types
 ### Command
