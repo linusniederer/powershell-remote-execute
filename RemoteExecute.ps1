@@ -45,10 +45,8 @@ Class RemoteExecute {
 
             # get credentials
             $username = "$($this.config.credentials.domain)\$($this.config.credentials.username)"
-            $password = $this.config.credentials.password
-            $secureString = ConvertTo-SecureString $password -AsPlainText -Force
-
-            $this.cred = New-Object System.Management.Automation.PSCredential -ArgumentList ($username, $secureString)
+            $securePassword = $this.config.credentials.password | ConvertTo-SecureString
+            $this.cred = New-Object System.Management.Automation.PSCredential -ArgumentList ($username, $securePassword)
 
             # read server configuration
             foreach($server in $this.config.servers) {
